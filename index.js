@@ -11,13 +11,13 @@ let openPositions = {};
 
 async function autoClosePositions() {
   const currentTime = Math.floor(Date.now() / 1000);
-  for (const [orderId, { entryTime, posSide }] of Object.entries(
+  for (const [clOrdId, { entryTime, posSide }] of Object.entries(
     openPositions
   )) {
     if (currentTime - entryTime > MAX_POSITION_TIME) {
-      console.log(`Closing order ${orderId} due to timeout.`);
-      await okxRepository.closePosition(orderId, posSide);
-      delete openPositions[orderId];
+      console.log(`Closing order ${clOrdId} due to timeout.`);
+      await okxRepository.closePosition(clOrdId, posSide);
+      delete openPositions[clOrdId];
     }
   }
 }
@@ -26,6 +26,7 @@ async function runBot() {
   console.log("Bot is running...");
   while (true) {
     try {
+      await autoClosePositions();
       const df = await okxRepository.getCandles();
       const prices = df.map((candle) => candle.close);
       const lastPrice = prices[prices.length - 1];
@@ -56,12 +57,13 @@ async function runBot() {
         lastPrice >= ema50 * 0.98 &&
         adx > 20
       ) {
-        await okxRepository.placeOrder({
+        const { clOrdId } = await okxRepository.placeOrder({
           side: "buy",
           entryPrice: lastPrice,
           canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
           tradeHistory,
         });
+        openPositions[clOrdId] = { entryTime: Math.floor(Date.now() / 1000), posSide: "long" };
       } else if (
         lastPrice > upperBand &&
         rsi > 65 &&
@@ -69,12 +71,13 @@ async function runBot() {
         lastPrice <= ema50 * 1.02 &&
         adx > 20
       ) {
-        await okxRepository.placeOrder({
+        const { clOrdId } = await okxRepository.placeOrder({
           side: "sell",
           entryPrice: lastPrice,
           canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
           tradeHistory,
         });
+        openPositions[clOrdId] = { entryTime: Math.floor(Date.now() / 1000), posSide: "short" };
       } else {
         console.log(
           moment().format("MMMM Do YYYY, h:mm:ss a") + " Tidak Terpenuhi!"
