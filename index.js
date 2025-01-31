@@ -1,9 +1,10 @@
 const moment = require("moment");
 const OkxRepository = require("./repository/OkxRepository");
 const TradingAnalysisRepository = require("./repository/TradingAnalysisRepository");
-const MAX_POSITION_TIME = 7200;
 const okxRepository = new OkxRepository();
 const tradingAnalysisRepository = new TradingAnalysisRepository();
+
+const MAX_POSITION_TIME = 7200;
 
 let tradeHistory = [];
 
@@ -48,8 +49,9 @@ async function runBot() {
         MACD: ${histogram}, 
         EMA50: ${ema50}, 
         ADX: ${adx}
-     `);
+      `);
 
+      // Breakout logic - Buy signal
       if (
         lastPrice < lowerBand &&
         rsi < 35 &&
@@ -57,27 +59,64 @@ async function runBot() {
         lastPrice >= ema50 * 0.98 &&
         adx > 20
       ) {
+        console.log("Potential Buy Signal Detected");
         const { clOrdId } = await okxRepository.placeOrder({
           side: "buy",
           entryPrice: lastPrice,
           canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
           tradeHistory,
         });
-        openPositions[clOrdId] = { entryTime: Math.floor(Date.now() / 1000), posSide: "long" };
-      } else if (
+        openPositions[clOrdId] = {
+          entryTime: Math.floor(Date.now() / 1000),
+          posSide: "long",
+        };
+      }
+
+      // Breakout logic - Sell signal
+      else if (
         lastPrice > upperBand &&
         rsi > 65 &&
         histogram < 0.1 &&
         lastPrice <= ema50 * 1.02 &&
         adx > 20
       ) {
+        console.log("Potential Sell Signal Detected");
         const { clOrdId } = await okxRepository.placeOrder({
           side: "sell",
           entryPrice: lastPrice,
           canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
           tradeHistory,
         });
-        openPositions[clOrdId] = { entryTime: Math.floor(Date.now() / 1000), posSide: "short" };
+        openPositions[clOrdId] = {
+          entryTime: Math.floor(Date.now() / 1000),
+          posSide: "short",
+        };
+      }
+      // BPE logic for breakout
+      else if (lastPrice > upperBand) {
+        console.log("Breakout Detected - Going Long");
+        const { clOrdId } = await okxRepository.placeOrder({
+          side: "buy",
+          entryPrice: lastPrice,
+          canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+          tradeHistory,
+        });
+        openPositions[clOrdId] = {
+          entryTime: Math.floor(Date.now() / 1000),
+          posSide: "long",
+        };
+      } else if (lastPrice < lowerBand) {
+        console.log("Breakout Detected - Going Short");
+        const { clOrdId } = await okxRepository.placeOrder({
+          side: "sell",
+          entryPrice: lastPrice,
+          canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+          tradeHistory,
+        });
+        openPositions[clOrdId] = {
+          entryTime: Math.floor(Date.now() / 1000),
+          posSide: "short",
+        };
       } else {
         console.log(
           moment().format("MMMM Do YYYY, h:mm:ss a") + " Tidak Terpenuhi!"

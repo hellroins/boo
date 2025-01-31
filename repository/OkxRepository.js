@@ -40,6 +40,7 @@ class OkxRepository {
       "OK-ACCESS-TIMESTAMP": timestamp,
       "OK-ACCESS-PASSPHRASE": this.passphrase,
       "Content-Type": "application/json",
+      "x-simulated-trading": 1,
     };
   }
 
@@ -73,7 +74,7 @@ class OkxRepository {
     if (!canTrade) {
       return;
     }
-    const clOrdId = crypto.randomBytes(20).toString('hex');
+    const clOrdId = crypto.randomBytes(20).toString("hex");
     const stopLoss =
       side === "buy"
         ? entryPrice * (1 - this.stopLossPercent)
