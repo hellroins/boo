@@ -1,6 +1,23 @@
 const moment = require("moment");
+const fs = require("fs");
+
 const OkxRepository = require("./repository/OkxRepository");
 const TradingAnalysisRepository = require("./repository/TradingAnalysisRepository");
+
+function logToFile(message) {
+  const logMessage = `${message}\n`;
+  fs.appendFile("app.log", logMessage, (err) => {
+    if (err) {
+      console.log("Gagal menulis ke file log:", err);
+    }
+  });
+}
+
+console.log = (message) => {
+  process.stdout.write(message + "\n");
+  logToFile(message);
+};
+
 const okxRepository = new OkxRepository();
 const tradingAnalysisRepository = new TradingAnalysisRepository();
 
@@ -44,25 +61,14 @@ async function runBot() {
       const adx = tradingAnalysisRepository.calculateADX(prices, highs, lows);
 
       console.log(`
-        Price: ${lastPrice}, 
-        LB: ${lowerBand}, 
-        UB: ${upperBand}, 
-        RSI: ${rsi}, 
-        MACD: ${histogram}, 
-        EMA50: ${ema50}, 
+        Price: ${lastPrice},
+        LB: ${lowerBand},
+        UB: ${upperBand},
+        RSI: ${rsi},
+        MACD: ${histogram},
+        EMA50: ${ema50},
         ADX: ${adx}
       `);
-
-      const { clOrdId } = await okxRepository.placeOrder({
-        side: "buy",
-        entryPrice: lastPrice,
-        canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
-        tradeHistory,
-      });
-      openPositions[clOrdId] = {
-        entryTime: Math.floor(Date.now() / 1000),
-        posSide: "long",
-      };
 
       // Breakout logic - Buy signal
       if (
@@ -76,7 +82,10 @@ async function runBot() {
         const { clOrdId } = await okxRepository.placeOrder({
           side: "buy",
           entryPrice: lastPrice,
-          canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+          canTrade: tradingAnalysisRepository.overTradeCheck(
+            tradeHistory,
+            openPositions
+          ),
           tradeHistory,
         });
         openPositions[clOrdId] = {
@@ -97,7 +106,10 @@ async function runBot() {
         const { clOrdId } = await okxRepository.placeOrder({
           side: "sell",
           entryPrice: lastPrice,
-          canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+          canTrade: tradingAnalysisRepository.overTradeCheck(
+            tradeHistory,
+            openPositions
+          ),
           tradeHistory,
         });
         openPositions[clOrdId] = {
@@ -111,7 +123,10 @@ async function runBot() {
         const { clOrdId } = await okxRepository.placeOrder({
           side: "buy",
           entryPrice: lastPrice,
-          canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+          canTrade: tradingAnalysisRepository.overTradeCheck(
+            tradeHistory,
+            openPositions
+          ),
           tradeHistory,
         });
         openPositions[clOrdId] = {
@@ -123,7 +138,10 @@ async function runBot() {
         const { clOrdId } = await okxRepository.placeOrder({
           side: "sell",
           entryPrice: lastPrice,
-          canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+          canTrade: tradingAnalysisRepository.overTradeCheck(
+            tradeHistory,
+            openPositions
+          ),
           tradeHistory,
         });
         openPositions[clOrdId] = {
@@ -138,7 +156,7 @@ async function runBot() {
 
       await new Promise((resolve) => setTimeout(resolve, 60000));
     } catch (error) {
-      console.error(`Error: ${error.message}`);
+      console.log(`Error: ${error.message}`);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
