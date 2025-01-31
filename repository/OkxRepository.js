@@ -120,12 +120,12 @@ class OkxRepository {
     }
   }
 
-  async closePosition(orderId, posSide) {
+  async closePosition(clOrdId, posSide) {
     const path = "/api/v5/trade/close-position";
     const url = BASE_URL + path;
     const body = {
       instId: this.symbol,
-      ordId: orderId,
+      clOrdId,
       posSide,
       mgnMode: "cross",
     };
