@@ -113,8 +113,7 @@ class OkxRepository {
       console.log(
         `Order placed: ${side} ${this.sizeOrderPlace} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
       );
-      return { clOrdId: response.data.data.clOrdId }
-      return { dataOrder: response.data };
+      return { clOrdId: response.data.data.clOrdId };
     } catch (error) {
       console.error(`Error placing order: ${error.message}`);
     }
