@@ -9,6 +9,7 @@ const TAKE_PROFIT_PERCENT = 0.01;
 const TRAILING_STOP_PERCENT = 0.0025;
 const MAX_TRADES_PER_HOUR = 3;
 const COOL_DOWN_PERIOD = 100;
+const MAX_OPEN_POSITION = 3;
 
 module.exports = {
   API_KEY,
@@ -22,4 +23,5 @@ module.exports = {
   TRAILING_STOP_PERCENT,
   MAX_TRADES_PER_HOUR,
   COOL_DOWN_PERIOD,
+  MAX_OPEN_POSITION,
 };
