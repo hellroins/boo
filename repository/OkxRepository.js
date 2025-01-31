@@ -133,9 +133,9 @@ class OkxRepository {
       await axios.post(url, body, {
         headers: getHeaders("POST", path, JSON.stringify(body)),
       });
-      console.log(`Position ${orderId} closed successfully.`);
+      console.log(`Position ${clOrdId} closed successfully.`);
     } catch (error) {
-      console.error(`Error closing position ${orderId}: ${error.message}`);
+      console.error(`Error closing position ${clOrdId}: ${error.message}`);
     }
   }
 }
