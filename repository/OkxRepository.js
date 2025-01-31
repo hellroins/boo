@@ -74,7 +74,7 @@ class OkxRepository {
     if (!canTrade) {
       return;
     }
-    const clOrdId = crypto.randomBytes(20).toString("hex");
+    const clOrdId = crypto.randomBytes(5).toString("hex");
     const stopLoss =
       side === "buy"
         ? entryPrice * (1 - this.stopLossPercent)
@@ -114,7 +114,7 @@ class OkxRepository {
       console.log(
         `Order placed: ${side} ${this.sizeOrderPlace} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
       );
-      return { clOrdId: response.data.data.clOrdId };
+      return { clOrdId: response.data.data[0].clOrdId };
     } catch (error) {
       console.error(`Error placing order: ${error.message}`);
     }
@@ -132,11 +132,13 @@ class OkxRepository {
 
     try {
       await axios.post(url, body, {
-        headers: getHeaders("POST", path, JSON.stringify(body)),
+        headers: this.getHeaders("POST", path, JSON.stringify(body)),
       });
       console.log(`Position ${clOrdId} closed successfully.`);
+      return true;
     } catch (error) {
       console.error(`Error closing position ${clOrdId}: ${error.message}`);
+      return false;
     }
   }
 }

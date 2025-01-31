@@ -17,8 +17,10 @@ async function autoClosePositions() {
   )) {
     if (currentTime - entryTime > MAX_POSITION_TIME) {
       console.log(`Closing order ${clOrdId} due to timeout.`);
-      await okxRepository.closePosition(clOrdId, posSide);
-      delete openPositions[clOrdId];
+      const close = await okxRepository.closePosition(clOrdId, posSide);
+      if (close) {
+        delete openPositions[clOrdId];
+      }
     }
   }
 }
@@ -50,6 +52,17 @@ async function runBot() {
         EMA50: ${ema50}, 
         ADX: ${adx}
       `);
+
+      const { clOrdId } = await okxRepository.placeOrder({
+        side: "buy",
+        entryPrice: lastPrice,
+        canTrade: tradingAnalysisRepository.overTradeCheck(tradeHistory),
+        tradeHistory,
+      });
+      openPositions[clOrdId] = {
+        entryTime: Math.floor(Date.now() / 1000),
+        posSide: "long",
+      };
 
       // Breakout logic - Buy signal
       if (
