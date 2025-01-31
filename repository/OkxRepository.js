@@ -73,6 +73,7 @@ class OkxRepository {
     if (!canTrade) {
       return;
     }
+    const clOrdId = crypto.randomBytes(20).toString('hex');
     const stopLoss =
       side === "buy"
         ? entryPrice * (1 - this.stopLossPercent)
@@ -92,6 +93,7 @@ class OkxRepository {
       instId: this.symbol,
       tdMode: "cross",
       side,
+      clOrdId,
       posSide: side === "buy" ? "long" : "short",
       ordType: "market",
       sz: this.sizeOrderPlace.toString(),
@@ -111,6 +113,7 @@ class OkxRepository {
       console.log(
         `Order placed: ${side} ${this.sizeOrderPlace} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
       );
+      return { clOrdId: response.data.data.clOrdId }
       return { dataOrder: response.data };
     } catch (error) {
       console.error(`Error placing order: ${error.message}`);
