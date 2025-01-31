@@ -1,13 +1,19 @@
-const { MAX_TRADES_PER_HOUR, COOL_DOWN_PERIOD } = require("../config/config");
+const {
+  MAX_TRADES_PER_HOUR,
+  COOL_DOWN_PERIOD,
+  MAX_OPEN_POSITION,
+} = require("../config/config");
 
 class TradingAnalysisRepository {
   constructor() {
     this.maxTradesPerHour = MAX_TRADES_PER_HOUR;
     this.coolDownPeriod = COOL_DOWN_PERIOD;
+    this.maxOpenPosition = MAX_OPEN_POSITION;
   }
 
-  overTradeCheck(tradeHistory) {
+  overTradeCheck(tradeHistory, openPositions) {
     const currentTime = Math.floor(Date.now() / 1000);
+    const activePosition = Object.entries(openPositions).length;
     tradeHistory = tradeHistory.filter((t) => currentTime - t < 3600);
 
     if (tradeHistory.length >= this.maxTradesPerHour) {
@@ -20,6 +26,11 @@ class TradingAnalysisRepository {
       currentTime - tradeHistory[tradeHistory.length - 1] < this.coolDownPeriod
     ) {
       console.log("Cool-down active, waiting before next trade.");
+      return false;
+    }
+
+    if (activePosition > this.maxOpenPosition) {
+      console.log("Max (" + activePosition + "), Trade Reach");
       return false;
     }
 
