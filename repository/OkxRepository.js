@@ -65,7 +65,7 @@ class OkxRepository {
 
       return df.reverse();
     } catch (error) {
-      console.error(`Error fetching candles: ${error.message}`);
+      console.log(`Error fetching candles: ${error.message}`);
       throw error;
     }
   }
@@ -110,13 +110,12 @@ class OkxRepository {
         headers: this.getHeaders("POST", path, JSON.stringify(orderData)),
       });
       tradeHistory.push(Math.floor(Date.now() / 1000));
-      console.log(response.data);
       console.log(
         `Order placed: ${side} ${this.sizeOrderPlace} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
       );
       return { clOrdId: response.data.data[0].clOrdId };
     } catch (error) {
-      console.error(`Error placing order: ${error.message}`);
+      console.log(`Error placing order: ${error.message}`);
     }
   }
 
@@ -137,7 +136,7 @@ class OkxRepository {
       console.log(`Position ${clOrdId} closed successfully.`);
       return true;
     } catch (error) {
-      console.error(`Error closing position ${clOrdId}: ${error.message}`);
+      console.log(`Error closing position ${clOrdId}: ${error.message}`);
       return false;
     }
   }
