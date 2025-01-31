@@ -1,11 +1,14 @@
+const API_KEY = "";
+const SECRET_KEY = "";
+const PASSPHRASE = "";
 const BASE_URL = "https://www.okx.com";
 const SYMBOL = "XRP-USDT-SWAP";
 const SIZE_ORDER_PLACE = 0.1;
 const STOP_LOSS_PERCENT = 0.005;
 const TAKE_PROFIT_PERCENT = 0.01;
-const TRAILING_STOP_PERCENT = 0.00025;
-const MAX_TRADES_PER_HOUR = 4;
-const COOL_DOWN_PERIOD = 200;
+const TRAILING_STOP_PERCENT = 0.0025;
+const MAX_TRADES_PER_HOUR = 3;
+const COOL_DOWN_PERIOD = 100;
 
 module.exports = {
   API_KEY,
