@@ -11,6 +11,9 @@ let entryPrice = null;
 let takeProfit = null;
 let stopLoss = null;
 
+let lastSignalTime = 0; // Timestamp sinyal terakhir
+const SIGNAL_INTERVAL = 100 * 1000; // Minimal 10 detik antar sinyal
+
 ws.on("open", () => {
   console.log("Connected to OKX WebSocket");
   ws.send(
@@ -42,6 +45,13 @@ async function analyzeOrderBook(orderBook) {
   const totalAskSize = asks.reduce((sum, a) => sum + a.size, 0);
   const delta = totalBidSize - totalAskSize;
 
+  const currentTime = Date.now();
+
+  // Filter agar sinyal tidak muncul terlalu sering
+  if (currentTime - lastSignalTime < SIGNAL_INTERVAL) {
+    return;
+  }
+
   if (Math.abs(delta) < 100) return; // Skip sinyal kecil
 
   const strongBid = bids[0]; // Support terkuat
@@ -55,6 +65,7 @@ async function analyzeOrderBook(orderBook) {
       `\n🔵 BUY Signal - Entry: ${entryPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
     );
     lastSignal = "BUY";
+    lastSignalTime = currentTime;
     await okxRepository.placeOrderFast({
       side: "buy",
       stopLoss,
@@ -68,6 +79,7 @@ async function analyzeOrderBook(orderBook) {
       `\n🔴 SELL Signal - Entry: ${entryPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
     );
     lastSignal = "SELL";
+    lastSignalTime = currentTime;
     await okxRepository.placeOrderFast({
       side: "sell",
       stopLoss,
