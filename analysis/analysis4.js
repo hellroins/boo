@@ -12,7 +12,7 @@ let takeProfit = null;
 let stopLoss = null;
 
 let lastSignalTime = 0; // Timestamp sinyal terakhir
-const SIGNAL_INTERVAL = 100 * 1000; // Minimal 10 detik antar sinyal
+const SIGNAL_INTERVAL = 60 * 1000; // Minimal 10 detik antar sinyal
 
 ws.on("open", () => {
   console.log("Connected to OKX WebSocket");
