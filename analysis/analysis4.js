@@ -68,7 +68,7 @@ async function analyzeOrderBook(orderBook) {
       lastSignal = "BUY";
       lastSignalTime = currentTime;
       await okxRepository.placeOrderFast({
-        side: "sell",
+        side: "buy",
         stopLoss,
         takeProfit,
       });
@@ -84,7 +84,7 @@ async function analyzeOrderBook(orderBook) {
       lastSignal = "SELL";
       lastSignalTime = currentTime;
       await okxRepository.placeOrderFast({
-        side: "buy",
+        side: "sell",
         stopLoss,
         takeProfit,
       });
