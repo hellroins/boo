@@ -37,6 +37,7 @@ function placeOrder({ side, entryPrice, lb, ub, rsi, macd, ema50, adx }) {
     TAKE_PROFIT: takeProfit,
     Side: side,
     status: "open",
+    close: "",
   };
 
   const orders = loadOrders();
@@ -51,12 +52,16 @@ function updateOrders(lastPrice) {
     if (order.status === "open") {
       if (order.Side === "buy" && lastPrice >= order.TAKE_PROFIT) {
         order.status = "win";
+        order.close = Date.now();
       } else if (order.Side === "buy" && lastPrice <= order.STOP_LOSS) {
         order.status = "loss";
+        order.close = Date.now();
       } else if (order.Side === "sell" && lastPrice <= order.TAKE_PROFIT) {
         order.status = "win";
+        order.close = Date.now();
       } else if (order.Side === "sell" && lastPrice >= order.STOP_LOSS) {
         order.status = "loss";
+        order.close = Date.now();
       }
     }
   }
