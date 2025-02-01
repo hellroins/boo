@@ -54,11 +54,7 @@ async function analyzeOrderBook(orderBook) {
 
   if (Math.abs(delta) < 100) return; // Skip sinyal kecil
 
-  const strongBid = bids[0]; // Support terkuat
-  const strongAsk = asks[0]; // Resistance terkuat
-
   if (delta > 150 && lastSignal !== "BUY") {
-    entryPrice = strongAsk.price;
     takeProfit = entryPrice + pipSize * 5; // 10 pips TP
     stopLoss = entryPrice - pipSize * 5; // 5 pips SL
     console.log(
@@ -72,7 +68,6 @@ async function analyzeOrderBook(orderBook) {
       takeProfit,
     });
   } else if (delta < -150 && lastSignal !== "SELL") {
-    entryPrice = strongBid.price;
     takeProfit = entryPrice - pipSize * 5;
     stopLoss = entryPrice + pipSize * 5;
     console.log(
