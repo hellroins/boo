@@ -54,31 +54,40 @@ async function analyzeOrderBook(orderBook) {
 
   if (Math.abs(delta) < 100) return; // Skip sinyal kecil
 
+  const strongBid = bids[0]; // Support terkuat
+  const strongAsk = asks[0]; // Resistance terkuat
+
   if (delta > 150 && lastSignal !== "BUY") {
-    takeProfit = entryPrice + pipSize * 10; // 10 pips TP
-    stopLoss = entryPrice - pipSize * 5; // 5 pips SL
-    console.log(
-      `\n🔵 BUY Signal - Entry: ${entryPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
-    );
-    lastSignal = "BUY";
-    lastSignalTime = currentTime;
-    await okxRepository.placeOrderFast({
-      side: "sell",
-      stopLoss,
-      takeProfit,
-    });
+    if (strongAsk) {
+      entryPrice = strongAsk.price;
+      takeProfit = entryPrice + pipSize * 5; // 10 pips TP
+      stopLoss = entryPrice - pipSize * 5; // 5 pips SL
+      console.log(
+        `\n🔵 BUY Signal - Entry: ${entryPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
+      );
+      lastSignal = "BUY";
+      lastSignalTime = currentTime;
+      await okxRepository.placeOrderFast({
+        side: "sell",
+        stopLoss,
+        takeProfit,
+      });
+    }
   } else if (delta < -150 && lastSignal !== "SELL") {
-    takeProfit = entryPrice - pipSize * 10;
-    stopLoss = entryPrice + pipSize * 5;
-    console.log(
-      `\n🔴 SELL Signal - Entry: ${entryPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
-    );
-    lastSignal = "SELL";
-    lastSignalTime = currentTime;
-    await okxRepository.placeOrderFast({
-      side: "buy",
-      stopLoss,
-      takeProfit,
-    });
+    if (strongBid) {
+      entryPrice = strongBid.price;
+      takeProfit = entryPrice - pipSize * 5;
+      stopLoss = entryPrice + pipSize * 5;
+      console.log(
+        `\n🔴 SELL Signal - Entry: ${entryPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
+      );
+      lastSignal = "SELL";
+      lastSignalTime = currentTime;
+      await okxRepository.placeOrderFast({
+        side: "buy",
+        stopLoss,
+        takeProfit,
+      });
+    }
   }
 }
