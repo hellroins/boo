@@ -40,7 +40,7 @@ class OkxRepository {
       "OK-ACCESS-TIMESTAMP": timestamp,
       "OK-ACCESS-PASSPHRASE": this.passphrase,
       "Content-Type": "application/json",
-      "x-simulated-trading": 1,
+      // "x-simulated-trading": 1,
     };
   }
 
@@ -114,6 +114,35 @@ class OkxRepository {
         `Order placed: ${side} ${this.sizeOrderPlace} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
       );
       return { clOrdId: response.data.data[0].clOrdId };
+    } catch (error) {
+      console.log(`Error placing order: ${error.message}`);
+    }
+  }
+
+  async placeOrderFast({ side, stopLoss, takeProfit }) {
+    const path = "/api/v5/trade/order";
+    const url = this.baseUrl + path;
+    const size = 0.05;
+    const orderData = {
+      instId: this.symbol,
+      tdMode: "cross",
+      side,
+      posSide: side === "buy" ? "long" : "short",
+      ordType: "market",
+      sz: size.toString(),
+      slTriggerPx: stopLoss.toString(),
+      slOrdPx: stopLoss.toString(),
+      tpTriggerPx: takeProfit.toString(),
+      tpOrdPx: takeProfit.toString(),
+    };
+
+    try {
+      await axios.post(url, orderData, {
+        headers: this.getHeaders("POST", path, JSON.stringify(orderData)),
+      });
+      console.log(
+        `Order placed: ${side} ${0.05} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}`
+      );
     } catch (error) {
       console.log(`Error placing order: ${error.message}`);
     }
