@@ -143,6 +143,7 @@ class OkxRepository {
       console.log(
         `Order placed: ${side} ${0.05} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}`
       );
+      console.log(response.data);
     } catch (error) {
       console.log(`Error placing order: ${error.message}`);
     }
