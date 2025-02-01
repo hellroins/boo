@@ -106,7 +106,7 @@ class OkxRepository {
     };
 
     try {
-      const response = await axios.post(url, orderData, {
+      await axios.post(url, orderData, {
         headers: this.getHeaders("POST", path, JSON.stringify(orderData)),
       });
       tradeHistory.push(Math.floor(Date.now() / 1000));
@@ -137,7 +137,7 @@ class OkxRepository {
     };
 
     try {
-      await axios.post(url, orderData, {
+      const response = await axios.post(url, orderData, {
         headers: this.getHeaders("POST", path, JSON.stringify(orderData)),
       });
       console.log(
