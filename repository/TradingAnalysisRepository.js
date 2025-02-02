@@ -105,6 +105,31 @@ class TradingAnalysisRepository {
     const dx = (Math.abs(diPlus - diMinus) / (diPlus + diMinus)) * 100;
     return dx;
   }
+
+  calculateATR(prices, highs, lows, period = 14) {
+    if (prices.length < period) {
+      throw new Error("Not enough data to calculate ATR");
+    }
+
+    let trueRanges = [];
+    for (let i = 1; i < prices.length; i++) {
+      let highLow = highs[i] - lows[i];
+      let highClose = Math.abs(highs[i] - prices[i - 1]);
+      let lowClose = Math.abs(lows[i] - prices[i - 1]);
+
+      let trueRange = Math.max(highLow, highClose, lowClose);
+      trueRanges.push(trueRange);
+    }
+
+    let atr =
+      trueRanges.slice(0, period).reduce((sum, val) => sum + val, 0) / period;
+
+    for (let i = period; i < trueRanges.length; i++) {
+      atr = (atr * (period - 1) + trueRanges[i]) / period;
+    }
+
+    return atr;
+  }
 }
 
 module.exports = TradingAnalysisRepository;

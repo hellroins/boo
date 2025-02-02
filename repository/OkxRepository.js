@@ -44,8 +44,8 @@ class OkxRepository {
     };
   }
 
-  async getCandles() {
-    const path = `/api/v5/market/candles?instId=${this.symbol}&bar=1m&limit=100`;
+  async getCandles(timeFrame = "1m") {
+    const path = `/api/v5/market/candles?instId=${this.symbol}&bar=${timeFrame}&limit=100`;
     const url = this.baseUrl + path;
 
     try {
@@ -70,23 +70,17 @@ class OkxRepository {
     }
   }
 
-  async placeOrder({ side, entryPrice, canTrade, tradeHistory }) {
+  async placeOrder({ side, entryPrice, canTrade, tradeHistory, atr }) {
     if (!canTrade) {
       return;
     }
     const clOrdId = crypto.randomBytes(5).toString("hex");
     const stopLoss =
-      side === "buy"
-        ? entryPrice * (1 - this.stopLossPercent)
-        : entryPrice * (1 + this.stopLossPercent);
+      side === "buy" ? entryPrice - atr * 1.5 : entryPrice + atr * 1.5;
     const takeProfit =
-      side === "buy"
-        ? entryPrice * (1 + this.takeProfitPercent)
-        : entryPrice * (1 - this.takeProfitPercent);
+      side === "buy" ? entryPrice + atr * 3 : entryPrice - atr * 3;
     const trailingStop =
-      side === "buy"
-        ? entryPrice * (1 + this.trailingStopPercent)
-        : entryPrice * (1 - this.trailingStopPercent);
+      side === "buy" ? entryPrice + atr * 1 : entryPrice - atr * 1;
 
     const path = "/api/v5/trade/order";
     const url = this.baseUrl + path;
