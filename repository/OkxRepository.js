@@ -44,8 +44,8 @@ class OkxRepository {
     };
   }
 
-  async getCandles(timeFrame = "1m") {
-    const path = `/api/v5/market/candles?instId=${this.symbol}&bar=${timeFrame}&limit=100`;
+  async getCandles(timeFrame = "1m", limit = "100") {
+    const path = `/api/v5/market/candles?instId=${this.symbol}&bar=${timeFrame}&limit=${limit}`;
     const url = this.baseUrl + path;
 
     try {
