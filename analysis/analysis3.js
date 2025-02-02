@@ -18,11 +18,11 @@ function saveOrders(orders) {
   fs.writeFileSync(ORDER_FILE, JSON.stringify(orders, null, 2));
 }
 
-function placeOrder({ side, entryPrice, lb, ub, rsi, macd, ema50, adx }) {
-  const takeProfit =
-    side === "buy" ? entryPrice * (1 + 0.01) : entryPrice * (1 - 0.01);
+function placeOrder({ side, entryPrice, lb, ub, rsi, macd, ema50, adx, atr }) {
   const stopLoss =
-    side === "buy" ? entryPrice * (1 - 0.005) : entryPrice * (1 + 0.005);
+    side === "buy" ? entryPrice - atr * 1.5 : entryPrice + atr * 1.5;
+  const takeProfit =
+    side === "buy" ? entryPrice + atr * 3 : entryPrice - atr * 3;
 
   const order = {
     id: Date.now(),
@@ -72,7 +72,7 @@ async function runBot() {
   console.log("Bot is running...");
   while (true) {
     try {
-      const df = await okxRepository.getCandles();
+      const df = await okxRepository.getCandles("5m", "200");
       const prices = df.map((candle) => candle.close);
       const lastPrice = prices[prices.length - 1];
       const highs = df.map((candle) => candle.high);
@@ -84,10 +84,11 @@ async function runBot() {
       const ema50 = tradingAnalysisRepository.calculateEMA(prices, 50);
       const { macd } = tradingAnalysisRepository.calculateMACD(prices);
       const adx = tradingAnalysisRepository.calculateADX(prices, highs, lows);
+      const atr = tradingAnalysisRepository.calculateATR(prices, highs, lows);
 
       updateOrders(lastPrice);
 
-      if (lastPrice < lowerBand && adx > 25) {
+      if (lastPrice < lowerBand && adx > 40) {
         placeOrder({
           side: "buy",
           entryPrice: lastPrice,
@@ -97,8 +98,9 @@ async function runBot() {
           macd,
           ema50,
           adx,
+          atr,
         });
-      } else if (lastPrice > upperBand && adx > 25) {
+      } else if (lastPrice > upperBand && adx > 40) {
         placeOrder({
           side: "sell",
           entryPrice: lastPrice,
@@ -108,10 +110,11 @@ async function runBot() {
           macd,
           ema50,
           adx,
+          atr,
         });
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 60000));
+      await new Promise((resolve) => setTimeout(resolve, 5 * 60000));
     } catch (error) {
       console.log(`Error: ${error.message}`);
       await new Promise((resolve) => setTimeout(resolve, 5000));
