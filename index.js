@@ -47,7 +47,7 @@ async function runBot() {
   while (true) {
     try {
       //await autoClosePositions();
-      const df = await okxRepository.getCandles("5m");
+      const df = await okxRepository.getCandles("5m", "200");
       const prices = df.map((candle) => candle.close);
       const lastPrice = prices[prices.length - 1];
       const highs = df.map((candle) => candle.high);
@@ -59,18 +59,43 @@ async function runBot() {
       const ema50 = tradingAnalysisRepository.calculateEMA(prices, 50);
       const { histogram } = tradingAnalysisRepository.calculateMACD(prices);
       const adx = tradingAnalysisRepository.calculateADX(prices, highs, lows);
-      const atr = tradingAnalysisRepository.calculateATR(prices, highs, lows);
+      const atr = tradingAnalysisRepository.calculateATR(
+        prices,
+        highs,
+        lows,
+        10
+      );
 
-      const df_1h = await okxRepository.getCandles("30m");
+      const df_1h = await okxRepository.getCandles("15m", "200");
       const prices_1h = df_1h.map((candle) => candle.close);
       const ema50_1h = tradingAnalysisRepository.calculateEMA(prices_1h, 50);
+
+      let reason = [];
+
+      if (rsi >= 35 && rsi <= 65) {
+        reason.push("RSI tidak valid");
+      }
+      if (adx <= 30) {
+        reason.push("ADX kurang");
+      }
+      if (histogram >= 0 && rsi < 30) {
+        reason.push("MACD tidak valid untuk Buy");
+      }
+      if (histogram <= 0 && rsi > 70) {
+        reason.push("MACD tidak valid untuk Sell");
+      }
+      if (lastPrice < ema50) {
+        reason.push("Harga di bawah EMA50");
+      }
+      if (lastPrice < ema50_1h) {
+        reason.push("Harga di bawah EMA50 15M");
+      }
 
       if (
         rsi < 35 &&
         histogram < 0 &&
-        adx > 25 &&
-        lastPrice > ema50 &&
-        lastPrice > ema50_1h
+        adx > 30 &&
+        (lastPrice > ema50 || lastPrice > ema50_1h)
       ) {
         console.log("Potential Buy Signal Detected");
         const { clOrdId } = await okxRepository.placeOrder({
@@ -90,9 +115,8 @@ async function runBot() {
       } else if (
         rsi > 65 &&
         histogram > 0 &&
-        adx > 25 &&
-        lastPrice < ema50 &&
-        lastPrice < ema50_1h
+        adx > 30 &&
+        (lastPrice < ema50 || lastPrice < ema50_1h)
       ) {
         console.log("Potential Sell Signal Detected");
         const { clOrdId } = await okxRepository.placeOrder({
@@ -111,7 +135,9 @@ async function runBot() {
         };
       } else {
         console.log(
-          moment().format("MMMM Do YYYY, h:mm:ss a") + " Tidak Terpenuhi!"
+          `${moment().format(
+            "MMMM Do YYYY, h:mm:ss a"
+          )} Tidak Terpenuhi! Alasan: ${reason.join(", ")}`
         );
       }
 
