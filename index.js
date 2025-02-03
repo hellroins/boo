@@ -108,10 +108,12 @@ async function runBot() {
           tradeHistory,
           atr,
         });
-        openPositions[clOrdId] = {
-          entryTime: Math.floor(Date.now() / 1000),
-          posSide: "long",
-        };
+        if (clOrdId) {
+          openPositions[clOrdId] = {
+            entryTime: Math.floor(Date.now() / 1000),
+            posSide: "long",
+          };
+        }
       } else if (
         rsi > 65 &&
         histogram > 0 &&
@@ -129,10 +131,12 @@ async function runBot() {
           tradeHistory,
           atr,
         });
-        openPositions[clOrdId] = {
-          entryTime: Math.floor(Date.now() / 1000),
-          posSide: "short",
-        };
+        if (clOrdId) {
+          openPositions[clOrdId] = {
+            entryTime: Math.floor(Date.now() / 1000),
+            posSide: "short",
+          };
+        }
       } else {
         console.log(
           `${moment().format(
