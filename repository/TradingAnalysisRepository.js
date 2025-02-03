@@ -29,10 +29,10 @@ class TradingAnalysisRepository {
       return false;
     }
 
-    if (activePosition > this.maxOpenPosition) {
-      console.log("Max (" + activePosition + "), Trade Reach");
-      return false;
-    }
+    // if (activePosition > this.maxOpenPosition) {
+    //   console.log("Max (" + activePosition + "), Trade Reach");
+    //   return false;
+    // }
 
     return true;
   }
