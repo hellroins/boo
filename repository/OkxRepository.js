@@ -105,7 +105,7 @@ class OkxRepository {
       });
       tradeHistory.push(Math.floor(Date.now() / 1000));
       console.log(
-        `Order placed: ${side} ${this.sizeOrderPlace} ${SYMBOL} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
+        `Order placed: ${side} ${this.sizeOrderPlace} ${this.symbol} with SL: ${stopLoss}, TP: ${takeProfit}, TS: ${trailingStop}`
       );
       return { clOrdId: response.data.data[0].clOrdId };
     } catch (error) {
