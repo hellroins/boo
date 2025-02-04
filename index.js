@@ -27,30 +27,34 @@ let activePositions = {}; // Menyimpan posisi aktif untuk adaptive exit
 
 async function checkAdaptiveExit() {
   try {
-    const lastPrice = await okxRepository.getLatestPrice(); // Ambil harga real-time
+    const lastPrice = await okxRepository.getLatestPrice(); // Harga real-time
 
-    for (const [clOrdId, { entryPrice, posSide, openTime }] of Object.entries(
-      activePositions
-    )) {
+    for (const [
+      clOrdId,
+      { entryPrice, posSide, openTime, maxProfit },
+    ] of Object.entries(activePositions)) {
       const currentTime = Math.floor(Date.now() / 1000);
       const timeElapsed = currentTime - openTime; // Waktu posisi terbuka
 
-      const priceChange = Math.abs(lastPrice - entryPrice); // Perubahan harga
-      const minMove = entryPrice * 0.0005; // Minimum perubahan harga (0.05%)
-
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
+      const minMove = entryPrice * 0.0005; // Minimum perubahan harga (0.05%)
 
-      if (priceChange < minMove && timeElapsed > 5 * 60 && profit >= 0) {
+      // Simpan profit tertinggi yang pernah dicapai
+      if (profit > maxProfit) {
+        activePositions[clOrdId].maxProfit = profit;
+      }
+
+      // Jika harga stagnan selama 5 menit dan profit turun dari max profit, close posisi
+      if (timeElapsed > 5 * 60 && profit < maxProfit * 0.7) {
+        // Jika turun 30% dari max profit
         console.log(
-          `✅ Closing position ${clOrdId} due to stagnation. Profit: ${profit}`
+          `✅ Closing position ${clOrdId} due to retracement. Max Profit: ${maxProfit}, Current Profit: ${profit}`
         );
         const close = await okxRepository.closePosition(clOrdId, posSide);
         if (close) {
           delete activePositions[clOrdId];
         }
-      } else if (priceChange < minMove && timeElapsed > 5 * 60 && profit < 0) {
-        console.log(`⚠️ Position ${clOrdId} not closed due to loss: ${profit}`);
       }
     }
   } catch (error) {
@@ -123,6 +127,7 @@ async function runBot() {
           entryPrice: lastPrice,
           posSide: "long",
           openTime: Math.floor(Date.now() / 1000),
+          maxProfit: 0,
         };
       } else if (lastPrice > upperBand && adx > 40) {
         console.log("Potential Sell Signal Detected");
@@ -140,6 +145,7 @@ async function runBot() {
           entryPrice: lastPrice,
           posSide: "short",
           openTime: Math.floor(Date.now() / 1000),
+          maxProfit: 0,
         };
       } else {
         console.log(
