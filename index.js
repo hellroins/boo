@@ -38,17 +38,19 @@ async function checkAdaptiveExit() {
       const priceChange = Math.abs(lastPrice - entryPrice); // Perubahan harga
       const minMove = entryPrice * 0.0005; // Minimum perubahan harga (0.05%)
 
-      if (priceChange < minMove && timeElapsed > 5 * 60) {
-        // Harga stagnan selama 5 menit
+      const profit =
+        posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
+
+      if (priceChange < minMove && timeElapsed > 5 * 60 && profit >= 0) {
         console.log(
-          `Closing position ${clOrdId} due to stagnation. Profit: ${
-            lastPrice - entryPrice
-          }`
+          `✅ Closing position ${clOrdId} due to stagnation. Profit: ${profit}`
         );
         const close = await okxRepository.closePosition(clOrdId, posSide);
         if (close) {
           delete activePositions[clOrdId];
         }
+      } else if (priceChange < minMove && timeElapsed > 5 * 60 && profit < 0) {
+        console.log(`⚠️ Position ${clOrdId} not closed due to loss: ${profit}`);
       }
     }
   } catch (error) {
