@@ -71,10 +71,10 @@ class OkxRepository {
   }
 
   async placeOrder({ side, entryPrice, canTrade, tradeHistory, atr }) {
-    if (!canTrade) {
-      return;
-    }
     const clOrdId = crypto.randomBytes(5).toString("hex");
+    if (!canTrade) {
+      return { clOrdId };
+    }
     const stopLoss =
       side === "buy" ? entryPrice - atr * 1.5 : entryPrice + atr * 1.5;
     const takeProfit =
@@ -110,6 +110,27 @@ class OkxRepository {
       return { clOrdId: response.data.data[0].clOrdId };
     } catch (error) {
       console.log(`Error placing order: ${error.message}`);
+    }
+  }
+
+  async getLatestPrice() {
+    try {
+      const response = await axios.get(`${this.baseUrl}/api/v5/market/ticker`, {
+        params: { instId: this.symbol },
+      });
+
+      if (
+        response.data &&
+        response.data.data &&
+        response.data.data.length > 0
+      ) {
+        return parseFloat(response.data.data[0].last); // Harga real-time
+      } else {
+        throw new Error("Data harga tidak tersedia");
+      }
+    } catch (error) {
+      console.error("Error fetching latest price:", error.message);
+      return null;
     }
   }
 
