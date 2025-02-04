@@ -163,5 +163,5 @@ async function runBot() {
   }
 }
 
-setInterval(checkAdaptiveExit, 30000); // Cek setiap 30 detik untuk menutup posisi jika stagnan
+//setInterval(checkAdaptiveExit, 30000); // Cek setiap 30 detik untuk menutup posisi jika stagnan
 runBot();
