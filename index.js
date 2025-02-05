@@ -29,6 +29,19 @@ async function checkAdaptiveExit() {
   try {
     const lastPrice = await okxRepository.getLatestPrice(); // Harga real-time
 
+    // ✅ Ambil data candle 10 terakhir untuk ATR (lebih akurat)
+    const df = await okxRepository.getCandles("5m", "10");
+    const prices = df.map((candle) => candle.close);
+    const highs = df.map((candle) => candle.high);
+    const lows = df.map((candle) => candle.low);
+
+    const atrValue = tradingAnalysisRepository.calculateATR(
+      prices,
+      highs,
+      lows,
+      10
+    ); // ✅ ATR dari candle historis
+
     for (const [clOrdId, position] of Object.entries(activePositions)) {
       const { entryPrice, posSide, openTime, stopLoss, takeProfit, maxProfit } =
         position;
@@ -37,12 +50,6 @@ async function checkAdaptiveExit() {
 
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
-      const atrValue = tradingAnalysisRepository.calculateATR(
-        [lastPrice],
-        [lastPrice],
-        [lastPrice],
-        10
-      ); // ATR baru
 
       // Update Max Profit
       if (profit > maxProfit) {
@@ -136,9 +143,9 @@ async function runBot() {
       // if (rsi >= 35 && rsi <= 65) {
       //   reason.push("RSI tidak valid");
       // }
-      if (adx <= 40) {
-        reason.push("ADX kurang");
-      }
+      // if (adx <= 40) {
+      //   reason.push("ADX kurang");
+      // }
       // if (histogram >= 0 && rsi < 30) {
       //   reason.push("MACD tidak valid untuk Buy");
       // }
@@ -160,7 +167,7 @@ async function runBot() {
         reason.push("LP kurang dari UB");
       }
 
-      if (lastPrice < lowerBand && adx > 40) {
+      if (lastPrice < lowerBand) {
         console.log("Potential Buy Signal Detected");
 
         const { clOrdId } = await okxRepository.placeOrder({
@@ -182,7 +189,7 @@ async function runBot() {
           takeProfit: lastPrice + atr * 3,
           maxProfit: 0,
         };
-      } else if (lastPrice > upperBand && adx > 40) {
+      } else if (lastPrice > upperBand) {
         console.log("Potential Sell Signal Detected");
         const { clOrdId } = await okxRepository.placeOrder({
           side: "sell",
