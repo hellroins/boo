@@ -29,32 +29,73 @@ async function checkAdaptiveExit() {
   try {
     const lastPrice = await okxRepository.getLatestPrice(); // Harga real-time
 
-    for (const [
-      clOrdId,
-      { entryPrice, posSide, openTime, maxProfit },
-    ] of Object.entries(activePositions)) {
+    for (const [clOrdId, position] of Object.entries(activePositions)) {
+      const { entryPrice, posSide, openTime, stopLoss, takeProfit, maxProfit } =
+        position;
       const currentTime = Math.floor(Date.now() / 1000);
-      const timeElapsed = currentTime - openTime; // Waktu posisi terbuka
+      const timeElapsed = currentTime - openTime;
 
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
-      const minMove = entryPrice * 0.0005; // Minimum perubahan harga (0.05%)
+      const atrValue = tradingAnalysisRepository.calculateATR(
+        [lastPrice],
+        [lastPrice],
+        [lastPrice],
+        10
+      ); // ATR baru
 
-      // Simpan profit tertinggi yang pernah dicapai
+      // Update Max Profit
       if (profit > maxProfit) {
         activePositions[clOrdId].maxProfit = profit;
       }
 
-      // Jika harga stagnan selama 5 menit dan profit turun dari max profit, close posisi
-      if (timeElapsed > 5 * 60 && profit < maxProfit * 0.7) {
-        // Jika turun 30% dari max profit
+      // **Jika harga masih naik, TP tetap**
+      if (profit > maxProfit * 0.8) {
+        console.log(`🚀 Harga masih naik, TP tetap di ${takeProfit}`);
+      }
+
+      // **Jika harga stagnan, TP diturunkan berdasarkan ATR**
+      else if (timeElapsed > 5 * 60) {
+        activePositions[clOrdId].takeProfit -= atrValue * 0.5; // Kurangi TP jika harga sulit naik
         console.log(
-          `✅ Closing position ${clOrdId} due to retracement. Max Profit: ${maxProfit}, Current Profit: ${profit}`
+          `⚠️ Harga susah naik, TP diturunkan menjadi ${activePositions[clOrdId].takeProfit}`
         );
+      }
+
+      // **Trailing Stop: Naikkan SL jika harga sudah cukup profit**
+      if (profit > atrValue * 1.5) {
+        activePositions[clOrdId].stopLoss += atrValue * 0.5; // Geser SL naik untuk kunci profit
+        console.log(
+          `🔄 Trailing Stop aktif, SL naik menjadi ${activePositions[clOrdId].stopLoss}`
+        );
+      }
+
+      // **Cek apakah harga menyentuh TP atau SL**
+      if (
+        (posSide === "long" &&
+          lastPrice >= activePositions[clOrdId].takeProfit) ||
+        (posSide === "short" &&
+          lastPrice <= activePositions[clOrdId].takeProfit)
+      ) {
+        console.log(`✅ Take Profit Tercapai. Menutup posisi ${clOrdId}.`);
         const close = await okxRepository.closePosition(clOrdId, posSide);
         if (close) {
           delete activePositions[clOrdId];
         }
+        continue;
+      }
+
+      if (
+        (posSide === "long" &&
+          lastPrice <= activePositions[clOrdId].stopLoss) ||
+        (posSide === "short" && lastPrice >= activePositions[clOrdId].stopLoss)
+      ) {
+        console.log(`⛔ Stop Loss Tercapai. Menutup posisi ${clOrdId}.`);
+        const close = await okxRepository.closePosition(clOrdId, posSide);
+        if (close) {
+          delete activePositions[clOrdId];
+        }
+        continue;
       }
     }
   } catch (error) {
@@ -95,9 +136,9 @@ async function runBot() {
       // if (rsi >= 35 && rsi <= 65) {
       //   reason.push("RSI tidak valid");
       // }
-      // if (adx <= 30) {
-      //   reason.push("ADX kurang");
-      // }
+      if (adx <= 40) {
+        reason.push("ADX kurang");
+      }
       // if (histogram >= 0 && rsi < 30) {
       //   reason.push("MACD tidak valid untuk Buy");
       // }
@@ -111,8 +152,17 @@ async function runBot() {
       //   reason.push("Harga di bawah EMA50 15M");
       // }
 
+      if (lastPrice > lowerBand) {
+        reason.push("LP lebih besar dari LB");
+      }
+
+      if (lastPrice < upperBand) {
+        reason.push("LP kurang dari UB");
+      }
+
       if (lastPrice < lowerBand && adx > 40) {
         console.log("Potential Buy Signal Detected");
+
         const { clOrdId } = await okxRepository.placeOrder({
           side: "buy",
           entryPrice: lastPrice,
@@ -123,10 +173,13 @@ async function runBot() {
           tradeHistory,
           atr,
         });
+
         activePositions[clOrdId] = {
           entryPrice: lastPrice,
           posSide: "long",
           openTime: Math.floor(Date.now() / 1000),
+          stopLoss: lastPrice - atr * 1.5,
+          takeProfit: lastPrice + atr * 3,
           maxProfit: 0,
         };
       } else if (lastPrice > upperBand && adx > 40) {
@@ -145,6 +198,8 @@ async function runBot() {
           entryPrice: lastPrice,
           posSide: "short",
           openTime: Math.floor(Date.now() / 1000),
+          stopLoss: lastPrice + atr * 1.5,
+          takeProfit: lastPrice - atr * 3,
           maxProfit: 0,
         };
       } else {
@@ -163,5 +218,5 @@ async function runBot() {
   }
 }
 
-//setInterval(checkAdaptiveExit, 30000); // Cek setiap 30 detik untuk menutup posisi jika stagnan
+setInterval(checkAdaptiveExit, 30000); // Cek setiap 30 detik untuk menutup posisi jika stagnan
 runBot();
