@@ -29,78 +29,88 @@ async function checkAdaptiveExit() {
   try {
     const lastPrice = await okxRepository.getLatestPrice(); // Harga real-time
 
-    // ✅ Ambil data candle 10 terakhir untuk ATR (lebih akurat)
     const df = await okxRepository.getCandles("5m", "10");
     const prices = df.map((candle) => candle.close);
     const highs = df.map((candle) => candle.high);
     const lows = df.map((candle) => candle.low);
-
     const atrValue = tradingAnalysisRepository.calculateATR(
       prices,
       highs,
       lows,
       10
-    ); // ✅ ATR dari candle historis
+    );
+
+    const slippage = atrValue * 0.1; // Gunakan 10% dari ATR sebagai toleransi harga
 
     for (const [clOrdId, position] of Object.entries(activePositions)) {
-      const { entryPrice, posSide, openTime, stopLoss, takeProfit, maxProfit } =
-        position;
+      const {
+        entryPrice,
+        posSide,
+        openTime,
+        stopLoss,
+        takeProfit,
+        maxProfit,
+        lastUpdateTime,
+      } = position;
       const currentTime = Math.floor(Date.now() / 1000);
-      const timeElapsed = currentTime - openTime;
+      const timeElapsed = currentTime - lastUpdateTime; // ⬅️ Waktu sejak TP/SL terakhir diperbarui
 
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
 
-      // Update Max Profit
+      console.log(
+        `📌 Checking Position: ${clOrdId}, Last Price: ${lastPrice}, TP: ${takeProfit}, SL: ${stopLoss}`
+      );
+
       if (profit > maxProfit) {
         activePositions[clOrdId].maxProfit = profit;
       }
 
-      // **Jika harga masih naik, TP tetap**
-      if (profit > maxProfit * 0.8) {
-        console.log(`🚀 Harga masih naik, TP tetap di ${takeProfit}`);
-      }
-
-      // **Jika harga stagnan, TP diturunkan berdasarkan ATR**
-      else if (timeElapsed > 5 * 60) {
-        activePositions[clOrdId].takeProfit -= atrValue * 0.5; // Kurangi TP jika harga sulit naik
+      // ✅ TP hanya boleh diturunkan jika lebih dari 5 menit sejak terakhir update
+      if (timeElapsed > 5 * 60 && profit < atrValue * 2) {
+        activePositions[clOrdId].takeProfit -= atrValue * 0.5;
+        activePositions[clOrdId].lastUpdateTime = currentTime; // ⬅️ Perbarui waktu terakhir TP/SL diperbarui
         console.log(
           `⚠️ Harga susah naik, TP diturunkan menjadi ${activePositions[clOrdId].takeProfit}`
         );
       }
 
-      // **Trailing Stop: Naikkan SL jika harga sudah cukup profit**
-      if (profit > atrValue * 1.5) {
-        activePositions[clOrdId].stopLoss += atrValue * 0.5; // Geser SL naik untuk kunci profit
+      // ✅ SL hanya naik jika harga sudah profit cukup besar dan lebih dari 5 menit sejak update terakhir
+      if (timeElapsed > 5 * 60 && profit > atrValue * 2) {
+        activePositions[clOrdId].stopLoss += atrValue * 0.5;
+        activePositions[clOrdId].lastUpdateTime = currentTime; // ⬅️ Perbarui waktu terakhir TP/SL diperbarui
         console.log(
           `🔄 Trailing Stop aktif, SL naik menjadi ${activePositions[clOrdId].stopLoss}`
         );
       }
 
-      // **Cek apakah harga menyentuh TP atau SL**
+      // ✅ Cek apakah harga menyentuh TP atau SL dengan toleransi slippage
       if (
-        (posSide === "long" &&
-          lastPrice >= activePositions[clOrdId].takeProfit) ||
-        (posSide === "short" &&
-          lastPrice <= activePositions[clOrdId].takeProfit)
+        (posSide === "long" && lastPrice >= takeProfit - slippage) ||
+        (posSide === "short" && lastPrice <= takeProfit + slippage)
       ) {
         console.log(`✅ Take Profit Tercapai. Menutup posisi ${clOrdId}.`);
         const close = await okxRepository.closePosition(clOrdId, posSide);
         if (close) {
           delete activePositions[clOrdId];
+          console.log(`✅ Posisi ${clOrdId} berhasil ditutup.`);
+        } else {
+          console.log(`⚠️ Gagal menutup posisi ${clOrdId}, tetap dipantau.`);
         }
         continue;
       }
 
       if (
-        (posSide === "long" &&
-          lastPrice <= activePositions[clOrdId].stopLoss) ||
-        (posSide === "short" && lastPrice >= activePositions[clOrdId].stopLoss)
+        (posSide === "long" && lastPrice <= stopLoss + slippage) ||
+        (posSide === "short" && lastPrice >= stopLoss - slippage)
       ) {
         console.log(`⛔ Stop Loss Tercapai. Menutup posisi ${clOrdId}.`);
         const close = await okxRepository.closePosition(clOrdId, posSide);
         if (close) {
           delete activePositions[clOrdId];
+          console.log(`✅ Posisi ${clOrdId} berhasil ditutup.`);
+        } else {
+          console.log(`⚠️ Gagal menutup posisi ${clOrdId}, tetap dipantau.`);
         }
         continue;
       }
@@ -185,6 +195,7 @@ async function runBot() {
           entryPrice: lastPrice,
           posSide: "long",
           openTime: Math.floor(Date.now() / 1000),
+          lastUpdateTime: Math.floor(Date.now() / 1000),
           stopLoss: lastPrice - atr * 1.5,
           takeProfit: lastPrice + atr * 3,
           maxProfit: 0,
@@ -205,6 +216,7 @@ async function runBot() {
           entryPrice: lastPrice,
           posSide: "short",
           openTime: Math.floor(Date.now() / 1000),
+          lastUpdateTime: Math.floor(Date.now() / 1000),
           stopLoss: lastPrice + atr * 1.5,
           takeProfit: lastPrice - atr * 3,
           maxProfit: 0,
