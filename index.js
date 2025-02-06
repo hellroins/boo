@@ -55,6 +55,15 @@ async function checkAdaptiveExit() {
       const currentTime = Math.floor(Date.now() / 1000);
       const timeElapsed = currentTime - lastUpdateTime; // ⬅️ Waktu sejak TP/SL terakhir diperbarui
 
+      const isOrderActive = await okxRepository.checkOrderStatus(clOrdId);
+      if (!isOrderActive) {
+        console.log(
+          `🚀 Order ${clOrdId} sudah ditutup oleh OKX (TP/SL). Menghapus dari activePositions.`
+        );
+        delete activePositions[clOrdId];
+        continue;
+      }
+
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
 

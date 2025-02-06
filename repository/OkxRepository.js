@@ -185,6 +185,35 @@ class OkxRepository {
       return false;
     }
   }
+
+  async checkOrderStatus(clOrdId) {
+    const path = `/api/v5/trade/order?instId=${this.symbol}&clOrdId=${clOrdId}`;
+    const url = this.baseUrl + path;
+
+    try {
+      const response = await axios.get(url, {
+        headers: this.getHeaders("GET", path),
+      });
+
+      if (response.data && response.data.code === "0") {
+        const order = response.data.data[0];
+        if (order.state === "filled" || order.state === "canceled") {
+          return false; // ✅ Order sudah ditutup, hapus dari activePositions
+        }
+        return true; // ✅ Order masih aktif
+      } else {
+        console.log(
+          `⚠️ Gagal mengecek status order ${clOrdId}: ${response.data.msg}`
+        );
+        return true; // ✅ Asumsikan masih aktif jika gagal mengecek
+      }
+    } catch (error) {
+      console.log(
+        `❌ Error saat mengecek status order ${clOrdId}: ${error.message}`
+      );
+      return true;
+    }
+  }
 }
 
 module.exports = OkxRepository;
