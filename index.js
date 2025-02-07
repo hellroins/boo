@@ -46,23 +46,14 @@ async function checkAdaptiveExit() {
       const {
         entryPrice,
         posSide,
-        openTime,
         stopLoss,
         takeProfit,
         maxProfit,
         lastUpdateTime,
+        posId,
       } = position;
       const currentTime = Math.floor(Date.now() / 1000);
-      const timeElapsed = currentTime - lastUpdateTime; // ⬅️ Waktu sejak TP/SL terakhir diperbarui
-
-      const isOrderActive = await okxRepository.checkOrderStatus(clOrdId);
-      if (!isOrderActive) {
-        console.log(
-          `🚀 Order ${clOrdId} sudah ditutup oleh OKX (TP/SL). Menghapus dari activePositions.`
-        );
-        delete activePositions[clOrdId];
-        continue;
-      }
+      const timeElapsed = currentTime - lastUpdateTime; // Waktu sejak TP/SL terakhir diperbarui
 
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
@@ -75,25 +66,25 @@ async function checkAdaptiveExit() {
         activePositions[clOrdId].maxProfit = profit;
       }
 
-      // ✅ TP hanya boleh diturunkan jika lebih dari 5 menit sejak terakhir update
+      // ✅ 2. TP hanya boleh diturunkan jika lebih dari 5 menit sejak terakhir update & harga tidak naik
       if (timeElapsed > 5 * 60 && profit < atrValue * 2) {
         activePositions[clOrdId].takeProfit -= atrValue * 0.5;
-        activePositions[clOrdId].lastUpdateTime = currentTime; // ⬅️ Perbarui waktu terakhir TP/SL diperbarui
+        activePositions[clOrdId].lastUpdateTime = currentTime;
         console.log(
           `⚠️ Harga susah naik, TP diturunkan menjadi ${activePositions[clOrdId].takeProfit}`
         );
       }
 
-      // ✅ SL hanya naik jika harga sudah profit cukup besar dan lebih dari 5 menit sejak update terakhir
-      if (timeElapsed > 5 * 60 && profit > atrValue * 2) {
-        activePositions[clOrdId].stopLoss += atrValue * 0.5;
-        activePositions[clOrdId].lastUpdateTime = currentTime; // ⬅️ Perbarui waktu terakhir TP/SL diperbarui
+      // ✅ 3. SL DITURUNKAN agar batas rugi semakin kecil
+      if (timeElapsed > 5 * 60 && profit < 0) {
+        activePositions[clOrdId].stopLoss -= atrValue * 0.5; // ⬅️ Sekarang SL makin kecil (turun)
+        activePositions[clOrdId].lastUpdateTime = currentTime;
         console.log(
-          `🔄 Trailing Stop aktif, SL naik menjadi ${activePositions[clOrdId].stopLoss}`
+          `🔻 SL Diturunkan agar kerugian lebih kecil: ${activePositions[clOrdId].stopLoss}`
         );
       }
 
-      // ✅ Cek apakah harga menyentuh TP atau SL dengan toleransi slippage
+      // ✅ 4. Cek apakah harga menyentuh TP atau SL dengan toleransi slippage
       if (
         (posSide === "long" && lastPrice >= takeProfit - slippage) ||
         (posSide === "short" && lastPrice <= takeProfit + slippage)
