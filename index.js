@@ -53,7 +53,6 @@ async function checkAdaptiveExit() {
         posId,
       } = position;
       const currentTime = Math.floor(Date.now() / 1000);
-      const timeElapsed = currentTime - lastUpdateTime; // Waktu sejak TP/SL terakhir diperbarui
 
       const profit =
         posSide === "long" ? lastPrice - entryPrice : entryPrice - lastPrice;
@@ -66,25 +65,24 @@ async function checkAdaptiveExit() {
         activePositions[clOrdId].maxProfit = profit;
       }
 
-      // ✅ 2. TP hanya boleh diturunkan jika lebih dari 5 menit sejak terakhir update & harga tidak naik
-      if (timeElapsed > 5 * 60 && profit < atrValue * 2) {
-        activePositions[clOrdId].takeProfit -= atrValue * 0.5;
-        activePositions[clOrdId].lastUpdateTime = currentTime;
-        console.log(
-          `⚠️ Harga susah naik, TP diturunkan menjadi ${activePositions[clOrdId].takeProfit}`
-        );
+      if (posSide === "long" && lastPrice > entryPrice + maxProfit * 0.5) {
+        let newStopLoss = lastPrice - atrValue * 1.0; // SL dinaikkan ke 1x ATR di bawah harga saat ini
+        if (newStopLoss > stopLoss) {
+          // Pastikan SL hanya naik
+          activePositions[clOrdId].stopLoss = newStopLoss;
+          console.log(`🔼 Trailing SL dinaikkan menjadi ${newStopLoss}`);
+        }
       }
 
-      // ✅ 3. SL DITURUNKAN agar batas rugi semakin kecil
-      if (timeElapsed > 5 * 60 && profit < 0) {
-        activePositions[clOrdId].stopLoss -= atrValue * 0.5; // ⬅️ Sekarang SL makin kecil (turun)
-        activePositions[clOrdId].lastUpdateTime = currentTime;
-        console.log(
-          `🔻 SL Diturunkan agar kerugian lebih kecil: ${activePositions[clOrdId].stopLoss}`
-        );
+      if (posSide === "short" && lastPrice < entryPrice - maxProfit * 0.5) {
+        let newStopLoss = lastPrice + atrValue * 1.0; // SL diturunkan ke 1x ATR di atas harga saat ini
+        if (newStopLoss < stopLoss) {
+          // Pastikan SL hanya turun
+          activePositions[clOrdId].stopLoss = newStopLoss;
+          console.log(`🔽 Trailing SL diturunkan menjadi ${newStopLoss}`);
+        }
       }
 
-      // ✅ 4. Cek apakah harga menyentuh TP atau SL dengan toleransi slippage
       if (
         (posSide === "long" && lastPrice >= takeProfit - slippage) ||
         (posSide === "short" && lastPrice <= takeProfit + slippage)
@@ -94,8 +92,6 @@ async function checkAdaptiveExit() {
         if (close) {
           delete activePositions[clOrdId];
           console.log(`✅ Posisi ${clOrdId} berhasil ditutup.`);
-        } else {
-          console.log(`⚠️ Gagal menutup posisi ${clOrdId}, tetap dipantau.`);
         }
         continue;
       }
@@ -109,8 +105,6 @@ async function checkAdaptiveExit() {
         if (close) {
           delete activePositions[clOrdId];
           console.log(`✅ Posisi ${clOrdId} berhasil ditutup.`);
-        } else {
-          console.log(`⚠️ Gagal menutup posisi ${clOrdId}, tetap dipantau.`);
         }
         continue;
       }
@@ -126,7 +120,7 @@ async function runBot() {
     try {
       const df = await okxRepository.getCandles("5m", "200");
       const prices = df.map((candle) => candle.close);
-      const lastPrice = await okxRepository.getLatestPrice(); // Harga real-time
+      const lastPrice = prices[prices.length - 1];
       const highs = df.map((candle) => candle.high);
       const lows = df.map((candle) => candle.low);
 
@@ -149,25 +143,6 @@ async function runBot() {
       const ema50_1h = tradingAnalysisRepository.calculateEMA(prices_1h, 50);
 
       let reason = [];
-
-      // if (rsi >= 35 && rsi <= 65) {
-      //   reason.push("RSI tidak valid");
-      // }
-      // if (adx <= 40) {
-      //   reason.push("ADX kurang");
-      // }
-      // if (histogram >= 0 && rsi < 30) {
-      //   reason.push("MACD tidak valid untuk Buy");
-      // }
-      // if (histogram <= 0 && rsi > 70) {
-      //   reason.push("MACD tidak valid untuk Sell");
-      // }
-      // if (lastPrice < ema50) {
-      //   reason.push("Harga di bawah EMA50");
-      // }
-      // if (lastPrice < ema50_1h) {
-      //   reason.push("Harga di bawah EMA50 15M");
-      // }
 
       if (lastPrice > lowerBand) {
         reason.push("LP lebih besar dari LB");
