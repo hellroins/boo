@@ -152,7 +152,7 @@ async function runBot() {
         reason.push("LP kurang dari UB");
       }
 
-      if (lastPrice > upperBand) {
+      if (lastPrice < lowerBand) {
         console.log("Potential Buy Signal Detected");
 
         const { clOrdId } = await okxRepository.placeOrder({
@@ -175,7 +175,7 @@ async function runBot() {
           takeProfit: lastPrice + atr * 3,
           maxProfit: 0,
         };
-      } else if (lastPrice < lowerBand) {
+      } else if (lastPrice > upperBand) {
         console.log("Potential Sell Signal Detected");
         const { clOrdId } = await okxRepository.placeOrder({
           side: "sell",
